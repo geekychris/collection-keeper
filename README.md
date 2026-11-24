@@ -77,13 +77,14 @@ on all of them. Without a server everything stays on the device, as before.
   a code and opens the server's page in your browser; sign in there and
   approve the device. A QR code of the same page lets a phone that's already
   signed in approve a desktop. The app never sees your password; it gets a
-  token you can revoke on the server's web pages.
-- **In practice (iPhone, home lab):** after Connect, Safari asks you to sign
-  in again with "Sign in with the site's login" and your passkey, even if you
-  signed in before (the server's sign-in isn't kept between the app's browser
-  openings yet). You then land on "Connect this device?": approve it, switch
-  back to the app, and it pairs within a few seconds. Approve before the code
-  expires (10 minutes), or press Connect again for a new one.
+  token you can revoke on the server's web pages, and keeps it in the
+  platform's secure storage (keychain, Android Keystore, Windows Credential
+  Manager).
+- **In practice (iPhone, home lab):** after Connect, Safari goes through the
+  lab login (your passkey, or nothing if it remembers you) to "Connect this
+  device?". Approve it, switch back to the app, and it pairs within a few
+  seconds. Approve before the code expires (10 minutes), or press Connect
+  again for a new one.
 - **Passkeys:** the lab's passkey page says "the object is in an invalid
   state" when that device already has a passkey for you, often synced through
   iCloud Keychain. Nothing is wrong: sign in with the passkey you have.
@@ -101,8 +102,6 @@ on all of them. Without a server everything stays on the device, as before.
 - **Conflicts:** the most recent edit of a record wins. A device connecting
   for the first time sends everything it has, so two existing libraries merge.
 - The protocol is in [docs/sync-protocol.md](docs/sync-protocol.md).
-- To do: the device token is kept with the app's preferences; it should move
-  to the platform keychain.
 
 ## Roadmap
 
@@ -116,8 +115,7 @@ on all of them. Without a server everything stays on the device, as before.
    with it and sync edits and media in the background (above); anyone can
    point the app at their own server instead. Running at
    https://collections.hitorro.com since 2026-11-24, with Chris's iPhone
-   paired. To do: keep the server's sign-in across the app's browser
-   openings, and keep the device token in the keychain.
+   paired.
 4. **Sharing** collections with other people (owner, editor, viewer; public
    read-only links), then maintenance and repair logs, value history, and
    reports.

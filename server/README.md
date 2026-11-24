@@ -39,9 +39,13 @@ The server logs every request (method, path, status; never query strings)
 and each sign-in and pairing decision. `/admin/logs` shows the recent ones;
 on mp2, `microk8s kubectl -n collection-keeper logs deploy/server`.
 
-- `GET /pair` → `302` → `/login` again and again: the browser isn't sending
-  the session cookie `ck_session`. Check `sessions` in Postgres: if the
-  sign-in is there, the browser dropped the cookie, not the server.
+- Signed out on the https names, a page goes straight to the site's login
+  (`/login/oidc?auto=1`) and comes back with `signedin=1`. Arriving signed
+  out with that marker shows the login page instead, so a browser that keeps
+  no cookie doesn't loop. Each signed-out page logs `not signed in` with
+  `session_cookie=true|false`: `false` means the browser didn't send
+  `ck_session`; `true` means it did, but the session expired or was ended.
+  The server's `sessions` table shows which sign-ins it still holds.
 - `signed in` followed by `GET /` instead of `GET /pair`: the page someone
   was going to was lost. `next` must stay a path on this site (`safeNext`);
   templates write it as `{{.Data.Next}}`, since html/template already escapes
