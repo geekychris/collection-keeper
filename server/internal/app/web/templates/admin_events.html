@@ -1,0 +1,7 @@
+{{define "content"}}
+{{template "adminnav"}}
+<h1>{{if .Data.F.ErrorsOnly}}Sync problems{{else}}Sync log{{end}}</h1>
+<p class="muted">Every push, pull, upload and download from the app, newest first; kept 30 days.
+{{if or .Data.F.UserID .Data.F.DeviceID}}Filtered. <a href="/admin/events">Show everything</a>{{end}}</p>
+{{template "events" .Data.Events}}
+{{end}}

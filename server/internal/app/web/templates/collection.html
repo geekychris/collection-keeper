@@ -1,0 +1,29 @@
+{{define "content"}}
+{{$c := .Data.C}}
+<p class="crumbs"><a href="/">Library</a> ›</p>
+<h1>{{$c.Str "name"}}{{if .Data.Deleted}} <span class="tag bad">deleted</span>{{end}}</h1>
+{{with $c.Str "description"}}<p>{{.}}</p>{{end}}
+
+<form class="search" method="get">
+  <input type="search" name="q" value="{{.Data.Q}}" placeholder="Search names, notes and fields" aria-label="Search">
+  <button>Search</button>
+  {{if .Data.Q}}<a href="/c/{{$c.ID}}">Clear</a>{{end}}
+</form>
+
+<p class="muted">{{len .Data.Lines}} items{{if .Data.Q}} matching “{{.Data.Q}}”{{end}} · <a href="/record/collection/{{$c.ID}}">record</a></p>
+{{if .Data.Lines}}
+<table class="list items">
+  <thead><tr><th></th><th>Name</th><th>Location</th>{{range .Data.Fields}}<th>{{.Name}}</th>{{end}}</tr></thead>
+  <tbody>
+  {{range .Data.Lines}}
+  <tr>
+    <td class="thumbcell">{{if .Thumb}}<img class="thumb" loading="lazy" src="/media/{{.Thumb}}?thumb=1" alt="">{{end}}</td>
+    <td><a href="/i/{{.Item.ID}}">{{.Item.Str "name"}}</a></td>
+    <td>{{if .Location}}<a href="/l/{{.Item.Str "locationId"}}">{{.Location}}</a>{{else}}<span class="muted">—</span>{{end}}</td>
+    {{range .Values}}<td>{{.}}</td>{{end}}
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
+{{end}}

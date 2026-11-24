@@ -1,0 +1,41 @@
+{{define "content"}}
+{{template "adminnav"}}
+<h1>People</h1>
+<table class="list">
+  <thead><tr><th>Person</th><th>Signs in with</th><th>Items</th><th>Records</th><th>Media</th><th>Devices</th><th>Last sign-in</th><th>Last sync</th><th></th></tr></thead>
+  <tbody>
+  {{range .Data.Users}}
+  <tr {{if .Disabled}}class="dim"{{end}}>
+    <td><a href="/admin/users/{{.ID}}"><b>{{.Username}}</b></a>{{if .Admin}} <span class="tag">admin</span>{{end}}{{if .Disabled}} <span class="tag bad">disabled</span>{{end}}<br><span class="muted">{{.Name}} {{.Email}}</span></td>
+    <td>{{if .OIDCSub}}login service{{end}}{{if and .OIDCSub .HasPassword}} + {{end}}{{if .HasPassword}}password{{end}}</td>
+    <td>{{.Items}}</td>
+    <td>{{.Records}}</td>
+    <td>{{bytes .BlobBytes}}</td>
+    <td>{{.Devices}}</td>
+    <td>{{whenp .LastLoginAt}}</td>
+    <td>{{whenp .LastSyncAt}}</td>
+    <td>
+      <form method="post" action="/admin/view-as">
+        <input type="hidden" name="csrf" value="{{$.S.CSRF}}">
+        <input type="hidden" name="user" value="{{.ID}}">
+        <button class="small">View library</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+
+<section class="card narrow">
+  <h2>Add an account with a password</h2>
+  <p class="muted">{{if .Data.OIDC}}People with a role for this app in the login service get an account the first time they sign in; this is for someone without one.{{else}}This server has no login service, so everyone needs an account made here.{{end}}</p>
+  <form method="post" action="/admin/users" class="stack">
+    <input type="hidden" name="csrf" value="{{.S.CSRF}}">
+    <label>Username <input name="username" required autocomplete="off"></label>
+    <label>Name <input name="name" autocomplete="off"></label>
+    <label>Password (10 characters or more) <input name="password" type="password" minlength="10" required autocomplete="new-password"></label>
+    <label class="check"><input type="checkbox" name="admin"> Administrator</label>
+    <button class="primary">Add account</button>
+  </form>
+</section>
+{{end}}

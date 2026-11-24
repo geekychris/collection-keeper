@@ -1,0 +1,35 @@
+{{define "content"}}
+{{template "adminnav"}}
+<h1>Integrity check</h1>
+<p>Compares the media records devices sent, the files the server holds, and the disk. It reads every
+file's size, so it takes a moment with many files. It changes nothing.</p>
+<p><a class="button primary" href="/admin/check?run=1">Run the check</a></p>
+
+{{with .Data.R}}
+<div class="grid">
+  <section class="card">
+    <h2>Media records without their file</h2>
+    <p><b {{if .MissingBlob}}class="badtext"{{end}}>{{len .MissingBlob}}</b> of {{.MediaChecked}} media records. The device that took the
+    photo hasn't uploaded it (yet): it uploads before sending the record, so these point to an old app or a lost upload.</p>
+    {{if .MissingBlob}}
+    <table class="list">
+      <thead><tr><th>Person</th><th>File</th><th>Record</th></tr></thead>
+      <tbody>{{range .MissingBlob}}<tr><td>{{index $.Data.Names .OwnerID}}</td><td>{{.Str "fileName"}}</td><td><code>{{short .ID}}</code></td></tr>{{end}}</tbody>
+    </table>
+    {{end}}
+  </section>
+  <section class="card">
+    <h2>Files</h2>
+    <dl class="fields">
+      <dt>Checked</dt><dd>{{.BlobsChecked}}</dd>
+      <dt>Missing on disk</dt><dd {{if .MissingFile}}class="badtext"{{end}}>{{len .MissingFile}}</dd>
+      <dt>Wrong size</dt><dd {{if .WrongSize}}class="badtext"{{end}}>{{len .WrongSize}}</dd>
+      <dt>Not used by any record</dt><dd>{{.Orphans}} ({{bytes .OrphanBytes}}): photos since deleted; harmless</dd>
+      <dt>On disk but unknown</dt><dd>{{.UnknownOnDisk}}</dd>
+    </dl>
+    {{range .MissingFile}}<code class="block">missing {{.}}</code>{{end}}
+    {{range .WrongSize}}<code class="block">size {{.}}</code>{{end}}
+  </section>
+</div>
+{{end}}
+{{end}}

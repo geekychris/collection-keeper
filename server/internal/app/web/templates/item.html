@@ -1,0 +1,35 @@
+{{define "content"}}
+{{$i := .Data.I}}
+<p class="crumbs"><a href="/">Library</a> › {{with .Data.C}}<a href="/c/{{.ID}}">{{.Str "name"}}</a> ›{{end}}</p>
+<h1>{{$i.Str "name"}}{{if $i.Deleted}} <span class="tag bad">deleted</span>{{end}}</h1>
+
+<div class="split">
+<section>
+  <dl class="fields">
+    <dt>Location</dt>
+    <dd>{{if .Data.Location}}<a href="/l/{{.Data.LocationID}}">{{.Data.Location}}</a>{{else}}<span class="muted">not set</span>{{end}}</dd>
+    {{with msp ($i.Data.lastSeenAt)}}<dt>Last checked</dt><dd>{{.}}</dd>{{end}}
+    {{range .Data.Values}}
+    <dt>{{.Name}}</dt>
+    <dd>{{if eq .Type "url"}}<a href="{{.Value}}" rel="noopener noreferrer">{{.Value}}</a>{{else if eq .Type "longText"}}<span class="pre">{{.Value}}</span>{{else}}{{.Value}}{{end}}</dd>
+    {{end}}
+  </dl>
+  {{with $i.Str "notes"}}<h2>Notes</h2><p class="pre">{{.}}</p>{{end}}
+  <p class="muted">Changed {{ago $i.Updated}}{{with $i.DeviceName}} on {{.}}{{end}} · <a href="/record/item/{{$i.ID}}">record</a></p>
+</section>
+<section>
+  {{if .Data.Media}}
+  <div class="gallery">
+    {{range .Data.Media}}
+    <figure>
+      {{if isImage .}}<a href="/media/{{.Str "sha256"}}"><img loading="lazy" src="/media/{{.Str "sha256"}}?thumb=1" alt="{{.Str "caption"}}"></a>
+      {{else if isVideo .}}<video controls preload="metadata" src="/media/{{.Str "sha256"}}"></video>
+      {{else}}<a class="doc" href="/media/{{.Str "sha256"}}">{{.Str "fileName"}}</a>{{end}}
+      <figcaption>{{.Str "caption"}} <a class="muted" href="/record/media/{{.ID}}">·</a></figcaption>
+    </figure>
+    {{end}}
+  </div>
+  {{else}}<p class="muted">No photos or files.</p>{{end}}
+</section>
+</div>
+{{end}}

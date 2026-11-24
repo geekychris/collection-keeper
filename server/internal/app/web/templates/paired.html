@@ -1,0 +1,12 @@
+{{define "content"}}
+<section class="narrow card">
+  {{if .Data.Approved}}
+  <h1>Connected</h1>
+  <p>The device is connected and starts syncing in a moment. You can go back to the app.</p>
+  {{else}}
+  <h1>Denied</h1>
+  <p>The device wasn't connected.</p>
+  {{end}}
+  <p><a href="/devices">Your devices</a></p>
+</section>
+{{end}}

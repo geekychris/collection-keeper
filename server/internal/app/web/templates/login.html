@@ -1,0 +1,21 @@
+{{define "content"}}
+<section class="narrow card">
+  <h1>Sign in</h1>
+  {{if .Data.Failed}}<p class="flash bad">That username and password don't match an account here.</p>{{end}}
+  {{if .Data.OIDC}}
+  <p><a class="button primary wide" href="/login/oidc?next={{query .Data.Next}}">Sign in with the site's login</a></p>
+  <details>
+    <summary>Sign in with a password instead</summary>
+  {{end}}
+    <form method="post" action="/login" class="stack">
+      <input type="hidden" name="next" value="{{.Data.Next}}">
+      <label>Username <input name="username" autocomplete="username" required autofocus></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary">Sign in</button>
+    </form>
+  {{if .Data.OIDC}}
+    <p class="muted">For accounts made on this server, such as the administrator's, when the login service is unreachable.</p>
+  </details>
+  {{end}}
+</section>
+{{end}}

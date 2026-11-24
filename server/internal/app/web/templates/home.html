@@ -1,0 +1,48 @@
+{{define "content"}}
+<h1>{{.S.Owner.DisplayName}}'s library</h1>
+<ul class="stats">
+  <li><b>{{len .Data.Collections}}</b> collections</li>
+  <li><b>{{index .Data.Kinds "item"}}</b> items</li>
+  <li><b>{{index .Data.Kinds "location"}}</b> locations</li>
+  <li><b>{{index .Data.Kinds "media"}}</b> photos and files <span class="muted">({{bytes .Data.MediaBytes}})</span></li>
+  <li><a href="/devices"><b>{{.Data.Devices}}</b> devices</a></li>
+</ul>
+
+{{if not .Data.Collections}}
+<section class="card">
+  <h2>Nothing here yet</h2>
+  <p>This library fills up when a device syncs to it. In the Collection Keeper app, open
+  <b>Sync server</b>, enter this server's address and connect. <a href="/help">How to connect</a></p>
+</section>
+{{else}}
+<div class="grid">
+  {{range .Data.Collections}}
+  <a class="card tile" href="/c/{{.ID}}">
+    <h2>{{.Str "name"}}</h2>
+    <p class="muted">{{index $.Data.ItemCounts .ID}} items · updated {{ago .Updated}}</p>
+    {{with .Str "description"}}<p>{{.}}</p>{{end}}
+  </a>
+  {{end}}
+</div>
+{{end}}
+
+{{if .Data.Recent}}
+<h2>Latest changes</h2>
+<table class="list">
+  <thead><tr><th>What</th><th>Name</th><th>Changed</th><th>From</th></tr></thead>
+  <tbody>
+  {{range .Data.Recent}}
+  <tr>
+    <td>{{.Kind}}{{if .Deleted}} <span class="tag bad">deleted</span>{{end}}</td>
+    <td>{{if and (eq .Kind "item") (not .Deleted)}}<a href="/i/{{.ID}}">{{.Str "name"}}</a>
+        {{else if and (eq .Kind "collection") (not .Deleted)}}<a href="/c/{{.ID}}">{{.Str "name"}}</a>
+        {{else if and (eq .Kind "location") (not .Deleted)}}<a href="/l/{{.ID}}">{{.Str "name"}}</a>
+        {{else}}<a href="/record/{{.Kind}}/{{.ID}}">{{or (.Str "name") (.Str "fileName") (short .ID)}}</a>{{end}}</td>
+    <td>{{ago .ReceivedAt}}</td>
+    <td class="muted">{{or .DeviceName "—"}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
+{{end}}

@@ -7,8 +7,7 @@ one Flutter codebase.
 
 It is local-first: every device keeps the whole collection and works with no
 connection, which matters when you are walking around a warehouse. An
-optional self-hosted server for syncing devices and sharing collections is
-planned (see the roadmap).
+optional self-hosted server (`server/`) keeps your devices in sync.
 
 This replaces [swift_artifact_manager](https://github.com/geekychris/swift_artifact_manager),
 an Apple-only SwiftUI prototype.
@@ -68,17 +67,44 @@ every location from the Locations screen.
   with a system driver (Brother, Dymo, Zebra), or a grid on A4 or Letter
   sheets. Print directly or share the PDF.
 
+### Sync
+
+Connect each device to a Collection Keeper server (the cloud button on the
+home screen) and your collections, locations, items and photos stay the same
+on all of them. Without a server everything stays on the device, as before.
+
+- **Connecting:** type the server's address and press Connect. The app shows
+  a code and opens the server's page in your browser; sign in there and
+  approve the device. A QR code of the same page lets a phone that's already
+  signed in approve a desktop. The app never sees your password; it gets a
+  token you can revoke on the server's web pages.
+- **Which address:** `https://collections.hitorro.com` works anywhere;
+  `https://collections.hitorro.com:8443` on the home network when the
+  internet is down; `http://192.168.1.219:31870` straight to mp2 on the home
+  network (sign in there with a server account, since the lab login only
+  works through the https names). The app warns about plain http outside
+  a home network.
+- **When:** on start, when the app comes back to the foreground, a few
+  seconds after a change, every five minutes while it's open, and on Sync
+  now. Offline, changes wait in an outbox in the database and go when the
+  connection is back.
+- **Conflicts:** the most recent edit of a record wins. A device connecting
+  for the first time sends everything it has, so two existing libraries merge.
+- The protocol is in [docs/sync-protocol.md](docs/sync-protocol.md).
+- To do: the device token is kept with the app's preferences; it should move
+  to the platform keychain.
+
 ## Roadmap
 
 1. **Done:** local app (above).
 2. **Done:** walk-round tools and labels (above). Not yet tried against a
    real NIIMBOT printer: the protocol is tested byte for byte against dumps
    from real printers and a simulated one.
-3. **Optional sync server:** a Go service with Postgres and object storage,
+3. **Optional sync server:** a Go service with Postgres (`server/`),
    deployed to the home lab (mp2) through cloud-stack and signed in through
-   the lab's passkey login (OpenID Connect at `auth.<zone>`). Devices sync
-   edits and media in the background; anyone can point the app at their own
-   server instead.
+   the lab's passkey login (OpenID Connect at `auth.<zone>`). Devices pair
+   with it and sync edits and media in the background (above); anyone can
+   point the app at their own server instead.
 4. **Sharing** collections with other people (owner, editor, viewer; public
    read-only links), then maintenance and repair logs, value history, and
    reports.
@@ -102,7 +128,10 @@ flutter run -d macos          # or an iOS simulator, Android device, windows
   or use a keyboard-style barcode scanner); Bluetooth printing needs Windows
   10 or later.
 - **Permissions:** camera (scanning and photos), photo library, and Bluetooth
-  (the label printer) are declared for iOS, Android and macOS.
+  (the label printer) are declared for iOS, Android and macOS, plus network
+  access for sync: Android's INTERNET permission and cleartext http (the
+  server address is the user's choice), iOS's `NSAllowsLocalNetworking` (http
+  on the home network), and the macOS sandbox's outgoing connections.
 
 ## Layout
 
@@ -119,10 +148,14 @@ lib/src/labels/niimbot_session.dart  request/reply exchange, handshake, running 
 lib/src/labels/niimbot_ble.dart   Bluetooth link (universal_ble) and the app's printer controller
 lib/src/labels/label.dart         label sizes, layout and 1-bit rendering
 lib/src/labels/pdf_labels.dart    labels as a PDF for other printers
+lib/src/sync/sync_api.dart        the sync protocol over HTTP (docs/sync-protocol.md)
+lib/src/sync/sync_engine.dart     one sync: push the outbox, pull and apply, fetch media files
+lib/src/sync/sync_controller.dart when to sync, pairing results, status for the UI
 lib/src/app/                      providers, settings and platform helpers (camera, files, sharing)
-lib/src/ui/                       screens (walk_round.dart: find, put away, stocktake, quick capture)
+lib/src/ui/                       screens (walk_round.dart: find, put away, stocktake, quick capture;
+                                  sync_screen.dart: choosing a server and pairing)
 assets/fonts/                     Noto Sans for PDF labels (SIL Open Font Licence, OFL.txt)
-test/                             data, export/import, protocol, printing and widget tests
+test/                             data, export/import, sync, protocol, printing and widget tests
 ```
 
 Data lives in the app's Application Support directory: `collection_keeper.sqlite`

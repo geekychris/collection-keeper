@@ -9,6 +9,7 @@ import '../exchange/exchange.dart';
 import 'collection_screen.dart';
 import 'common.dart';
 import 'locations_screen.dart';
+import 'sync_screen.dart';
 import 'walk_round.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -42,6 +43,7 @@ class HomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.file_download_outlined),
             onPressed: () => _import(context, ref),
           ),
+          const SyncButton(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

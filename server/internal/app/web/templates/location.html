@@ -1,0 +1,23 @@
+{{define "content"}}
+{{$l := .Data.L}}
+<p class="crumbs"><a href="/locations">Locations</a> › {{with .Data.Path}}{{.}} ›{{end}}</p>
+<h1>{{$l.Str "name"}} {{with $l.Str "code"}}<span class="tag">{{.}}</span>{{end}}</h1>
+{{with $l.Str "notes"}}<p class="pre">{{.}}</p>{{end}}
+
+{{if .Data.Children}}
+<h2>Inside</h2>
+<ul class="chips">{{range .Data.Children}}<li><a href="/l/{{.ID}}">{{.Str "name"}}</a></li>{{end}}</ul>
+{{end}}
+
+<h2>Kept here</h2>
+{{if .Data.Items}}
+<table class="list">
+  <thead><tr><th>Item</th><th>Collection</th><th>Last checked</th></tr></thead>
+  <tbody>
+  {{range .Data.Items}}
+  <tr><td><a href="/i/{{.ID}}">{{.Str "name"}}</a></td><td>{{index $.Data.Collections (.Str "collectionId")}}</td><td>{{or (msp (index .Data "lastSeenAt")) "—"}}</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}<p class="muted">Nothing is recorded as kept directly here.</p>{{end}}
+{{end}}

@@ -1,0 +1,14 @@
+{{define "content"}}
+{{$r := .Data.R}}
+<h1>{{title $r.Kind}} record</h1>
+<dl class="fields">
+  <dt>Id</dt><dd><code>{{$r.ID}}</code></dd>
+  <dt>Changed (device clock)</dt><dd>{{when $r.Updated}}</dd>
+  <dt>Received</dt><dd>{{when $r.ReceivedAt}} ({{ago $r.ReceivedAt}})</dd>
+  <dt>From device</dt><dd>{{or $r.DeviceName "—"}}</dd>
+  <dt>Change number</dt><dd>{{$r.Seq}}</dd>
+  <dt>Deleted</dt><dd>{{if $r.Deleted}}yes{{else}}no{{end}}</dd>
+</dl>
+<h2>As stored</h2>
+<pre class="json">{{.Data.JSON}}</pre>
+{{end}}

@@ -1,0 +1,10 @@
+{{define "content"}}
+<h1>Locations</h1>
+{{if .Data}}
+<ul class="tree">
+  {{range .Data}}
+  <li style="--depth: {{.Depth}}"><a href="/l/{{.Row.ID}}">{{.Row.Str "name"}}</a> {{with .Row.Str "code"}}<span class="tag">{{.}}</span>{{end}}</li>
+  {{end}}
+</ul>
+{{else}}<p class="muted">No locations yet.</p>{{end}}
+{{end}}

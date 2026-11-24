@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import '../labels/niimbot_ble.dart';
+import '../sync/sync_controller.dart';
 import 'settings.dart';
 
 /// Supplied by main() (or a test) through a ProviderScope override.
@@ -63,3 +64,11 @@ final itemsAtProvider = StreamProvider.autoDispose.family<List<Item>, String>(
 );
 
 String locationKey(Set<String> ids) => (ids.toList()..sort()).join(',');
+
+/// Syncing with the server, if one is set; started on first use and kept for
+/// the life of the app.
+final syncProvider = Provider<SyncController>((ref) {
+  final sync = SyncController(ref.watch(repositoryProvider), ref.watch(settingsProvider))..start();
+  ref.onDispose(sync.dispose);
+  return sync;
+});

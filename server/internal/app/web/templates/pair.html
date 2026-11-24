@@ -1,0 +1,29 @@
+{{define "content"}}
+<section class="narrow card">
+  <h1>Connect a device</h1>
+  {{if .Data.P}}
+    {{with .Data.P}}
+    {{if eq .Status "pending"}}
+    <p><b>{{.DeviceName}}</b>{{with .Platform}} ({{.}}){{end}} wants to sync with your library.</p>
+    <p class="code">{{.UserCode}}</p>
+    <p>Check this is the code the app is showing. Approve only a device you're holding: it will be able to read and change everything in your library.</p>
+    <form method="post" action="/pair" class="row">
+      <input type="hidden" name="csrf" value="{{$.S.CSRF}}">
+      <input type="hidden" name="code" value="{{.UserCode}}">
+      <button class="primary" name="decision" value="approve">Approve</button>
+      <button name="decision" value="deny">Deny</button>
+    </form>
+    {{if $.S.ViewAs}}<p class="muted">The device will be connected to your own library ({{$.S.User.Username}}), not the one you're viewing.</p>{{end}}
+    {{else}}
+    <p>This code was already {{.Status}}.</p>
+    {{end}}
+    {{end}}
+  {{else}}
+    {{if .Data.Raw}}<p class="flash bad">There's no pending connection with the code {{.Data.Raw}}. Codes last ten minutes; start again in the app if it has expired.</p>{{end}}
+    <form method="get" action="/pair" class="stack">
+      <label>The code the app shows <input name="code" placeholder="ABCD-EFGH" autocomplete="off" autocapitalize="characters" required autofocus></label>
+      <button class="primary">Continue</button>
+    </form>
+  {{end}}
+</section>
+{{end}}

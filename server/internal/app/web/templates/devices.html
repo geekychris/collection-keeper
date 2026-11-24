@@ -1,0 +1,10 @@
+{{define "content"}}
+<h1>Devices</h1>
+<p>Phones, tablets and computers that sync with {{if .S.ViewAs}}this{{else}}your{{end}} library. To add one, open
+<b>Sync server</b> in the app and connect; it shows a code to approve here. <a href="/pair">Enter a code</a></p>
+
+{{template "devicetable" (dict2 .Data.Devices .S "/devices")}}
+
+<h2>Recent sync activity</h2>
+{{template "events" .Data.Events}}
+{{end}}

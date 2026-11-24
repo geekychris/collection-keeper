@@ -1,0 +1,11 @@
+{{define "content"}}
+{{template "adminnav"}}
+<h1>Logs</h1>
+<p class="muted">The last 500 lines this server process logged, newest first (the pod's log has everything).
+{{if .Data.Warn}}<a href="/admin/logs">Show all</a>{{else}}<a href="/admin/logs?level=warn">Warnings and errors only</a>{{end}}</p>
+<table class="list logs">
+  <tbody>
+  {{range .Data.Lines}}<tr><td title="{{when .At}}">{{.At.Local.Format "15:04:05"}}</td><td><span class="tag {{if ge .Level 8}}bad{{end}}">{{.Level}}</span></td><td>{{.Message}} <span class="muted">{{.Attrs}}</span></td></tr>{{end}}
+  </tbody>
+</table>
+{{end}}

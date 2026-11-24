@@ -1,0 +1,62 @@
+{{define "content"}}
+{{template "adminnav"}}
+{{$u := .Data.U}}
+<p class="crumbs"><a href="/admin/users">People</a> ›</p>
+<h1>{{$u.Username}}{{if $u.Admin}} <span class="tag">admin</span>{{end}}{{if $u.Disabled}} <span class="tag bad">disabled</span>{{end}}</h1>
+
+<div class="grid">
+<section class="card">
+  <dl class="fields">
+    <dt>Name</dt><dd>{{or $u.Name "—"}}</dd>
+    <dt>Email</dt><dd>{{or $u.Email "—"}}</dd>
+    <dt>Signs in with</dt><dd>{{if $u.OIDCSub}}the login service (<code>{{$u.OIDCSub}}</code>){{end}}{{if $u.HasPassword}} a password{{end}}</dd>
+    <dt>Account made</dt><dd>{{when $u.CreatedAt}}</dd>
+    <dt>Last sign-in</dt><dd>{{whenp $u.LastLoginAt}}</dd>
+    <dt>Id</dt><dd><code>{{$u.ID}}</code></dd>
+  </dl>
+</section>
+<section class="card">
+  <h2>Library</h2>
+  <p>{{index .Data.Kinds "collection"}} collections, {{index .Data.Kinds "item"}} items, {{index .Data.Kinds "location"}} locations, {{index .Data.Kinds "media"}} media records; {{.Data.Blobs}} files ({{bytes .Data.BlobBytes}}).</p>
+  <form method="post" action="/admin/view-as">
+    <input type="hidden" name="csrf" value="{{.S.CSRF}}">
+    <input type="hidden" name="user" value="{{$u.ID}}">
+    <button class="primary">View this library</button>
+  </form>
+</section>
+<section class="card">
+  <h2>Account</h2>
+  {{if not .Data.Self}}
+  <form method="post" class="row">
+    <input type="hidden" name="csrf" value="{{.S.CSRF}}">
+    {{if $u.Disabled}}<button name="action" value="enable">Enable</button>{{else}}<button class="danger" name="action" value="disable">Disable</button>{{end}}
+    {{if not $u.OIDCSub}}{{if $u.Admin}}<button name="action" value="unadmin">Remove admin</button>{{else}}<button name="action" value="admin">Make admin</button>{{end}}{{end}}
+  </form>
+  {{end}}
+  {{if $u.HasPassword}}
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{.S.CSRF}}">
+    <input type="hidden" name="action" value="password">
+    <label>New password <input type="password" name="password" minlength="10" required autocomplete="new-password"></label>
+    <button>Set password</button>
+  </form>
+  {{end}}
+</section>
+</div>
+
+<h2>Devices</h2>
+{{template "devicetable" (dict2 .Data.Devices .S (printf "/admin/users/%s" $u.ID))}}
+
+<h2>Sync activity</h2>
+{{template "events" .Data.Events}}
+
+<h2>Latest changes</h2>
+<table class="list">
+  <thead><tr><th>What</th><th>Name</th><th>Received</th><th>From</th><th>Change #</th></tr></thead>
+  <tbody>
+  {{range .Data.Recent}}
+  <tr><td>{{.Kind}}{{if .Deleted}} <span class="tag bad">deleted</span>{{end}}</td><td>{{or (.Str "name") (.Str "fileName") (short .ID)}}</td><td>{{ago .ReceivedAt}}</td><td>{{or .DeviceName "—"}}</td><td>{{.Seq}}</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}

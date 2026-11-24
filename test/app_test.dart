@@ -11,6 +11,7 @@ import 'package:collection_keeper/src/data/model.dart';
 import 'package:collection_keeper/src/data/repository.dart';
 import 'package:collection_keeper/src/labels/label_content.dart';
 import 'package:collection_keeper/src/ui/print_labels_screen.dart';
+import 'package:collection_keeper/src/ui/sync_screen.dart';
 import 'package:collection_keeper/src/ui/walk_round.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -204,6 +205,25 @@ void main() {
     await tester.tap(find.text('NIIMBOT'));
     await settle(tester);
     expect(find.text('Find a printer nearby'), findsOneWidget);
+    await finish(tester);
+  });
+
+  testWidgets('the sync screen offers servers and warns about plain http', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.byType(SyncButton));
+    await settle(tester);
+    expect(find.text('Server address'), findsOneWidget);
+    expect(find.text('Connect'), findsOneWidget);
+    await tester.tap(find.textContaining('collections.hitorro.com:8443'));
+    await settle(tester);
+    expect(find.text('https://collections.hitorro.com:8443'), findsOneWidget);
+    expect(find.textContaining('isn\'t encrypted'), findsNothing);
+    await tester.enterText(find.byType(TextField).first, 'http://collections.example.com');
+    await settle(tester);
+    expect(find.textContaining('isn\'t encrypted'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'http://192.168.1.219:31870');
+    await settle(tester);
+    expect(find.textContaining('isn\'t encrypted'), findsNothing);
     await finish(tester);
   });
 }

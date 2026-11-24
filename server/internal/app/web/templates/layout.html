@@ -1,0 +1,42 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · {{.Server}}</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><img src="/static/icon.svg" alt="" width="22" height="22"> {{.Server}}</a>
+  {{if .S}}
+  <nav>
+    <a href="/" {{if or (eq .Nav "home") (eq .Nav "collection") (eq .Nav "item")}}class="on"{{end}}>Library</a>
+    <a href="/locations" {{if or (eq .Nav "locations") (eq .Nav "location")}}class="on"{{end}}>Locations</a>
+    <a href="/devices" {{if or (eq .Nav "devices") (eq .Nav "pair")}}class="on"{{end}}>Devices</a>
+    {{if .S.User.Admin}}<a href="/admin" {{if eq .Nav "admin"}}class="on"{{end}}>Admin</a>{{end}}
+  </nav>
+  <form class="who" method="post" action="/logout">
+    <span title="{{.S.User.Username}}">{{.S.User.DisplayName}}</span>
+    <input type="hidden" name="csrf" value="{{.S.CSRF}}">
+    <button class="link">Sign out</button>
+  </form>
+  {{end}}
+</header>
+{{if and .S .S.ViewAs}}
+<form class="viewas" method="post" action="/admin/view-as">
+  Viewing <b>{{.S.ViewAs.DisplayName}}</b>'s library ({{.S.ViewAs.Username}}), read only.
+  <input type="hidden" name="csrf" value="{{.S.CSRF}}">
+  <input type="hidden" name="user" value="">
+  <button>Back to my own</button>
+</form>
+{{end}}
+<main>
+{{if .Flash}}<p class="flash">{{.Flash}}</p>{{end}}
+{{if .Error}}<p class="flash bad">{{.Error}}</p>{{end}}
+{{template "content" .}}
+</main>
+<footer>Collection Keeper server {{.Version}}{{if .S}} · <a href="/help">Connecting the app</a>{{end}}</footer>
+</body>
+</html>{{end}}

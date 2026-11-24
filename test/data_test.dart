@@ -256,6 +256,8 @@ void main() {
     await v2.close();
     final raw = sqlite.sqlite3.open(file.path);
     raw.execute('ALTER TABLE items DROP COLUMN last_seen_at');
+    raw.execute('DROP TABLE sync_outbox');
+    raw.execute('DROP TABLE sync_applying');
     raw.execute('PRAGMA user_version = 1');
     raw.close();
 
@@ -266,5 +268,49 @@ void main() {
     expect(items.single.lastSeenAt, isNull);
     await Repository(upgraded, h.store).markSeen([items.single.id], at: 5);
     expect((await upgraded.select(upgraded.items).getSingle()).lastSeenAt, 5);
+  });
+
+  test('a version 2 database gains the sync outbox and its triggers', () async {
+    final file = File(p.join(tmp.path, 'v2.sqlite'));
+    final v3 = AppDatabase(NativeDatabase(file));
+    final c = await Repository(v3, h.store).createCollection(name: 'Old');
+    await v3.close();
+    final raw = sqlite.sqlite3.open(file.path);
+    for (final t in syncKinds.keys) {
+      raw.execute('DROP TRIGGER ${t}_outbox_insert');
+      raw.execute('DROP TRIGGER ${t}_outbox_update');
+    }
+    raw.execute('DROP TABLE sync_outbox');
+    raw.execute('DROP TABLE sync_applying');
+    raw.execute('PRAGMA user_version = 2');
+    raw.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    addTearDown(upgraded.close);
+    expect(await upgraded.select(upgraded.syncOutbox).get(), isEmpty,
+        reason: 'rows from before sync aren\'t queued until a server is connected');
+    await Repository(upgraded, h.store).updateCollection(c.id, name: 'Renamed');
+    final queued = await upgraded.select(upgraded.syncOutbox).get();
+    expect(queued.map((o) => (o.kind, o.id)), [('collection', c.id)]);
+  });
+
+  test('local writes go into the outbox; applied pulls don\'t', () async {
+    final c = await h.repo.createCollection(name: 'C', templateId: 'retro-computers');
+    final shelf = await h.repo.addLocation(name: 'Shelf');
+    final item = await h.repo.createItem(c.id, name: 'Thing', locationId: shelf.id);
+    final file = File(p.join(tmp.path, 'a.jpg'))..writeAsBytesSync([1, 2, 3]);
+    await h.repo.addMedia(item.id, [file]);
+    final kinds = (await h.db.select(h.db.syncOutbox).get()).map((o) => o.kind).toSet();
+    expect(kinds, {'collection', 'field', 'location', 'item', 'media'});
+
+    await h.db.delete(h.db.syncOutbox).go();
+    await h.db.transaction(() async {
+      await h.db.into(h.db.syncApplying).insert(SyncApplyingCompanion.insert(flag: 1));
+      await h.repo.updateItem(item.id, name: 'From the server');
+      await h.db.delete(h.db.syncApplying).go();
+    });
+    expect(await h.db.select(h.db.syncOutbox).get(), isEmpty);
+    await h.repo.updateItem(item.id, name: 'Local again');
+    expect((await h.db.select(h.db.syncOutbox).get()).single.id, item.id);
   });
 }

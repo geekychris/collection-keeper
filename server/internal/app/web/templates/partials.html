@@ -1,0 +1,61 @@
+{{define "devicetable"}}
+{{if .Devices}}
+<table class="list">
+  <thead><tr><th>Device</th>{{if .Owners}}<th>Person</th>{{end}}<th>Paired</th><th>Last seen</th><th>Last sync</th><th>From</th><th></th></tr></thead>
+  <tbody>
+  {{range .Devices}}
+  <tr {{if .RevokedAt}}class="dim"{{end}}>
+    <td><b>{{.Name}}</b><br><span class="muted">{{.Platform}} {{.AppVersion}}</span></td>
+    {{if $.Owners}}<td><a href="/admin/users/{{.UserID}}">{{index $.Owners .UserID}}</a></td>{{end}}
+    <td>{{ago .CreatedAt}}</td>
+    <td>{{whenp .LastSeenAt}}</td>
+    <td>{{whenp .LastSyncAt}}</td>
+    <td class="muted">{{.LastIP}}</td>
+    <td>{{if .RevokedAt}}<span class="tag">disconnected {{whenp .RevokedAt}}</span>{{else}}
+      <form method="post" action="/devices/{{.ID}}/revoke">
+        <input type="hidden" name="csrf" value="{{$.S.CSRF}}">
+        <input type="hidden" name="back" value="{{$.Back}}">
+        <button class="small danger">Disconnect</button>
+      </form>{{end}}
+      {{if $.S.User.Admin}}<a class="small" href="/admin/events?device={{.ID}}">log</a>{{end}}
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}<p class="muted">No devices yet.</p>{{end}}
+{{end}}
+
+{{define "events"}}
+{{if .}}
+<table class="list events">
+  <thead><tr><th>When</th><th>Person</th><th>Device</th><th>What</th><th>Records</th><th>Size</th><th>Time</th><th>Result</th></tr></thead>
+  <tbody>
+  {{range .}}
+  <tr {{if or (ge .Status 400) (gt .Rejected 0)}}class="badrow"{{end}}>
+    <td title="{{when .At}}">{{ago .At}}</td>
+    <td>{{.Username}}</td>
+    <td>{{.DeviceName}}</td>
+    <td>{{.Op}}</td>
+    <td>{{if eq .Op "push"}}{{.RecordsIn}} sent: {{.Accepted}} new, {{.Stale}} stale{{if .Rejected}}, <b>{{.Rejected}} rejected</b>{{end}}{{else if eq .Op "pull"}}{{.RecordsOut}} sent back{{end}}</td>
+    <td>{{if .Bytes}}{{bytes .Bytes}}{{end}}</td>
+    <td>{{.DurationMs}} ms</td>
+    <td>{{.Status}} <span class="err">{{.Error}}</span></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}<p class="muted">Nothing yet.</p>{{end}}
+{{end}}
+
+{{define "adminnav"}}
+<nav class="sub">
+  <a href="/admin">Server</a>
+  <a href="/admin/users">People</a>
+  <a href="/admin/devices">Devices</a>
+  <a href="/admin/events">Sync log</a>
+  <a href="/admin/events?errors=1">Errors</a>
+  <a href="/admin/check">Integrity</a>
+  <a href="/admin/logs">Logs</a>
+</nav>
+{{end}}

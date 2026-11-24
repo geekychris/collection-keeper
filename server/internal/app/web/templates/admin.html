@@ -1,0 +1,61 @@
+{{define "content"}}
+{{template "adminnav"}}
+{{$d := .Data}}
+<h1>Server</h1>
+<ul class="stats">
+  <li><a href="/admin/users"><b>{{$d.Users}}</b> people</a></li>
+  <li><a href="/admin/devices"><b>{{$d.Devices}}</b> connected devices</a></li>
+  <li><a href="/admin/events"><b>{{$d.Events24}}</b> syncs today</a></li>
+  <li><a href="/admin/events?errors=1"><b {{if $d.Errors24}}class="badtext"{{end}}>{{$d.Errors24}}</b> problems today</a></li>
+</ul>
+
+<div class="grid">
+<section class="card">
+  <h2>Storage</h2>
+  <dl class="fields">
+    <dt>Records</dt><dd>{{index $d.Kinds "collection"}} collections, {{index $d.Kinds "item"}} items, {{index $d.Kinds "location"}} locations, {{index $d.Kinds "field"}} fields, {{index $d.Kinds "media"}} media</dd>
+    <dt>Database</dt><dd>{{bytes $d.DBSize}} (Postgres {{$d.Postgres}}, schema {{$d.Schema}})</dd>
+    <dt>Media files</dt><dd>{{$d.Blobs.Count}} files, {{bytes $d.Blobs.Bytes}} in <code>{{$d.BlobDir}}</code></dd>
+    <dt>Disk</dt><dd>{{if $d.DiskErr}}<span class="badtext">{{$d.DiskErr}}</span>{{else}}{{bytes $d.Free}} free of {{bytes $d.Total}}
+      <meter min="0" max="100" high="85" value="{{pct $d.Free $d.Total}}">{{pct $d.Free $d.Total}}%</meter>{{end}}</dd>
+  </dl>
+</section>
+
+<section class="card">
+  <h2>Sign-in</h2>
+  <dl class="fields">
+  {{if $d.OIDC.Enabled}}
+    <dt>Login service</dt><dd>{{if $d.OIDC.OK}}<span class="tag good">reachable</span>{{else}}<span class="tag bad">unreachable</span>{{end}}</dd>
+    <dt>Issuer</dt><dd><code>{{$d.OIDC.Issuer}}</code></dd>
+    <dt>Back channel</dt><dd><code>{{$d.OIDC.Backchannel}}</code></dd>
+    <dt>Client</dt><dd><code>{{$d.OIDC.ClientID}}</code></dd>
+    <dt>Roles</dt><dd>admin: <code>{{$d.OIDC.AdminRole}}</code>; users: <code>{{$d.OIDC.UserRoles}}</code></dd>
+    <dt>Detail</dt><dd class="small">{{$d.OIDC.Detail}}</dd>
+  {{else}}
+    <dt>Login service</dt><dd>none configured: local accounts only</dd>
+  {{end}}
+    <dt>Local admin</dt><dd>{{if $d.LocalAdmin}}account <code>admin</code>, password from <code>ADMIN_PASSWORD</code>{{else}}none{{end}}</dd>
+  </dl>
+</section>
+
+<section class="card">
+  <h2>Process</h2>
+  <dl class="fields">
+    <dt>Version</dt><dd>{{.Version}}</dd>
+    <dt>Up</dt><dd>{{$d.Uptime}} (since {{when $d.Started}})</dd>
+    <dt>Go</dt><dd>{{$d.GoVersion}}, {{$d.Goroutines}} goroutines, {{bytes $d.HeapBytes}} heap</dd>
+    <dt>App address</dt><dd><code>{{$d.Base}}</code> (as this browser reached it)</dd>
+  </dl>
+</section>
+</div>
+
+<h2>Latest warnings and errors</h2>
+{{if $d.Warnings}}
+<table class="list logs">
+  <tbody>
+  {{range $d.Warnings}}<tr><td title="{{when .At}}">{{ago .At}}</td><td><span class="tag {{if ge .Level 8}}bad{{end}}">{{.Level}}</span></td><td>{{.Message}} <span class="muted">{{.Attrs}}</span></td></tr>{{end}}
+  </tbody>
+</table>
+<p><a href="/admin/logs?level=warn">All of them</a></p>
+{{else}}<p class="muted">None since the server started.</p>{{end}}
+{{end}}

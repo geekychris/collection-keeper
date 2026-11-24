@@ -30,5 +30,43 @@ class Settings {
       PdfLabelLayout.a4;
   set pdfLayout(PdfLabelLayout v) => _prefs.setString('pdfLayout', v.name);
 
+  // ---------------------------------------------------------------------- sync
+
+  /// The sync server's base URL; null when this device doesn't sync.
+  String? get serverUrl => _prefs.getString('serverUrl');
+  set serverUrl(String? v) => _set('serverUrl', v);
+
+  /// The device token from pairing. (Kept with the other preferences for
+  /// now; the platform keychain would be better.)
+  String? get syncToken => _prefs.getString('syncToken');
+  set syncToken(String? v) => _set('syncToken', v);
+
+  /// The account the token belongs to: its id decides whether a new pairing
+  /// is the same library or another one.
+  String? get syncUserId => _prefs.getString('syncUserId');
+  set syncUserId(String? v) => _set('syncUserId', v);
+
+  String? get syncUserName => _prefs.getString('syncUserName');
+  set syncUserName(String? v) => _set('syncUserName', v);
+
+  /// The server URL the cursor and outbox belong to.
+  String? get syncedServer => _prefs.getString('syncedServer');
+  set syncedServer(String? v) => _set('syncedServer', v);
+
+  /// What this device calls itself when pairing.
+  String? get deviceName => _prefs.getString('deviceName');
+  set deviceName(String? v) => _set('deviceName', v);
+
+  /// The last change pulled from the server (docs/sync-protocol.md).
+  int get syncCursor => _prefs.getInt('syncCursor') ?? 0;
+  set syncCursor(int v) => _prefs.setInt('syncCursor', v);
+
+  /// When the last sync finished without an error (ms, UTC).
+  int? get lastSyncAt => _prefs.getInt('lastSyncAt');
+  set lastSyncAt(int? v) => v == null ? _prefs.remove('lastSyncAt') : _prefs.setInt('lastSyncAt', v);
+
+  String? get lastSyncError => _prefs.getString('lastSyncError');
+  set lastSyncError(String? v) => _set('lastSyncError', v);
+
   void _set(String key, String? v) => v == null ? _prefs.remove(key) : _prefs.setString(key, v);
 }

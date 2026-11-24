@@ -1,0 +1,5 @@
+{{define "content"}}
+{{template "adminnav"}}
+<h1>All devices</h1>
+{{template "devicetable" (dict3 .Data.Devices .S "/admin/devices" .Data.Names)}}
+{{end}}

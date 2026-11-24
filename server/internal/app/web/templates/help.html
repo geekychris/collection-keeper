@@ -1,0 +1,15 @@
+{{define "content"}}
+<section class="card">
+  <h1>Connecting the app</h1>
+  <ol>
+    <li>In Collection Keeper, open <b>Sync server</b> (the cloud button on the home screen).</li>
+    <li>Enter this server's address: <code>{{.Data.Base}}</code></li>
+    <li>Tap <b>Connect</b>. The app shows a code and opens this site; sign in and approve the code.
+      On a computer you can also scan the QR code the app shows with your phone.</li>
+  </ol>
+  <p>The device keeps its own full copy and works offline. It syncs when it starts, a few seconds after
+  each change, and every few minutes while it's open. Disconnecting a device on the
+  <a href="/devices">Devices</a> page stops it syncing; it keeps what it has.</p>
+  <p class="muted">Developers: the protocol is in <code>docs/sync-protocol.md</code> in the app's repository; the API is under <code>{{.Data.Base}}/api/v1/</code>.</p>
+</section>
+{{end}}
