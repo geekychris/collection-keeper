@@ -78,11 +78,21 @@ on all of them. Without a server everything stays on the device, as before.
   approve the device. A QR code of the same page lets a phone that's already
   signed in approve a desktop. The app never sees your password; it gets a
   token you can revoke on the server's web pages.
+- **In practice (iPhone, home lab):** after Connect, Safari asks you to sign
+  in again with "Sign in with the site's login" and your passkey, even if you
+  signed in before (the server's sign-in isn't kept between the app's browser
+  openings yet). You then land on "Connect this device?": approve it, switch
+  back to the app, and it pairs within a few seconds. Approve before the code
+  expires (10 minutes), or press Connect again for a new one.
+- **Passkeys:** the lab's passkey page says "the object is in an invalid
+  state" when that device already has a passkey for you, often synced through
+  iCloud Keychain. Nothing is wrong: sign in with the passkey you have.
 - **Which address:** `https://collections.hitorro.com` works anywhere;
   `https://collections.hitorro.com:8443` on the home network when the
   internet is down; `http://192.168.1.219:31870` straight to mp2 on the home
   network (sign in there with a server account, since the lab login only
-  works through the https names). The app warns about plain http outside
+  works through the https names; a device paired by the local `admin` syncs
+  admin's library, not yours). The app warns about plain http outside
   a home network.
 - **When:** on start, when the app comes back to the foreground, a few
   seconds after a change, every five minutes while it's open, and on Sync
@@ -100,11 +110,14 @@ on all of them. Without a server everything stays on the device, as before.
 2. **Done:** walk-round tools and labels (above). Not yet tried against a
    real NIIMBOT printer: the protocol is tested byte for byte against dumps
    from real printers and a simulated one.
-3. **Optional sync server:** a Go service with Postgres (`server/`),
+3. **Done:** optional sync server: a Go service with Postgres (`server/`),
    deployed to the home lab (mp2) through cloud-stack and signed in through
    the lab's passkey login (OpenID Connect at `auth.<zone>`). Devices pair
    with it and sync edits and media in the background (above); anyone can
-   point the app at their own server instead.
+   point the app at their own server instead. Running at
+   https://collections.hitorro.com since 2026-11-24, with Chris's iPhone
+   paired. To do: keep the server's sign-in across the app's browser
+   openings, and keep the device token in the keychain.
 4. **Sharing** collections with other people (owner, editor, viewer; public
    read-only links), then maintenance and repair logs, value history, and
    reports.

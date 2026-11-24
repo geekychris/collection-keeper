@@ -33,6 +33,24 @@ Devices never see a password. The app asks for a pairing code, the person
 approves it at `/pair` while signed in, and the app gets a device token. The
 server stores only the token's hash; disconnecting the device revokes it.
 
+### When signing in or pairing goes wrong
+
+The server logs every request (method, path, status; never query strings)
+and each sign-in and pairing decision. `/admin/logs` shows the recent ones;
+on mp2, `microk8s kubectl -n collection-keeper logs deploy/server`.
+
+- `GET /pair` → `302` → `/login` again and again: the browser isn't sending
+  the session cookie `ck_session`. Check `sessions` in Postgres: if the
+  sign-in is there, the browser dropped the cookie, not the server.
+- `signed in` followed by `GET /` instead of `GET /pair`: the page someone
+  was going to was lost. `next` must stay a path on this site (`safeNext`);
+  templates write it as `{{.Data.Next}}`, since html/template already escapes
+  it in a link (escaping it again sends everyone to `/`).
+- `pairing decided … approved=true` but no `device paired`: the app stopped
+  polling (it was closed, or the code expired); connect again.
+- `signed in without a role for this app`: give the person the `user` or
+  `admin` role for the client `collection-keeper` in cloud-stack.
+
 ## Settings
 
 | Variable | |
