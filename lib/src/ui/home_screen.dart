@@ -9,6 +9,7 @@ import '../exchange/exchange.dart';
 import 'collection_screen.dart';
 import 'common.dart';
 import 'locations_screen.dart';
+import 'walk_round.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,14 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Collections'),
         actions: [
+          IconButton(
+            tooltip: 'Walk round: scan, put away, stocktake',
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const WalkRoundScreen()),
+            ),
+          ),
           IconButton(
             tooltip: 'Locations',
             icon: const Icon(Icons.warehouse_outlined),

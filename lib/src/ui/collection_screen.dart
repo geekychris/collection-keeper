@@ -10,10 +10,12 @@ import '../data/database.dart';
 import '../data/model.dart';
 import '../data/repository.dart';
 import '../exchange/exchange.dart';
+import '../labels/label_content.dart';
 import 'collection_settings_screen.dart';
 import 'common.dart';
 import 'item_detail.dart';
 import 'item_edit_screen.dart';
+import 'print_labels_screen.dart';
 
 class CollectionScreen extends ConsumerStatefulWidget {
   const CollectionScreen({super.key, required this.collectionId});
@@ -104,9 +106,22 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'export') _export();
+              if (v == 'labels') {
+                final shown = items.value ?? const <Item>[];
+                if (shown.isEmpty) return;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => PrintLabelsScreen(labels: [
+                      for (final i in shown) itemLabel(i, collection: collection, locations: locations),
+                    ]),
+                  ),
+                );
+              }
               if (v == 'delete') _delete();
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'labels', child: Text('Print labels for these items…')),
               PopupMenuItem(value: 'export', child: Text('Export…')),
               PopupMenuItem(value: 'delete', child: Text('Delete collection…')),
             ],

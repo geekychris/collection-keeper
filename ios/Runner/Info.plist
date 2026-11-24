@@ -6,8 +6,10 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Print labels on a NIIMBOT label printer.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Take photos and videos of the things in your collection.</string>
+	<string>Scan labels, and take photos and videos of the things in your collection.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Record sound with videos of your collection.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

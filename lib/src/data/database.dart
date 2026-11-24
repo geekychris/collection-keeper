@@ -69,6 +69,9 @@ class Items extends Table with Tracked {
   TextColumn get fieldValues => text().withDefault(const Constant('{}'))();
   TextColumn get notes => text().withDefault(const Constant(''))();
   TextColumn get coverMediaId => text().nullable()();
+
+  /// When a stocktake last found the item where it should be (ms, UTC).
+  IntColumn get lastSeenAt => integer().nullable()();
 }
 
 /// A photo, video or document attached to an item. The file itself lives in
@@ -100,10 +103,13 @@ class AppDatabase extends _$AppDatabase {
       ));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.addColumn(items, items.lastSeenAt);
+        },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },

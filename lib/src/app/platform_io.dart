@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -14,12 +15,30 @@ final _imagePicker = ImagePicker();
 
 bool get canUseCamera => _imagePicker.supportsImageSource(ImageSource.camera);
 
+/// On Android the app declares the camera permission (the label scanner
+/// needs it), and then the system camera only opens once it is granted.
+Future<void> _cameraAllowed() async {
+  if (!Platform.isAndroid) return;
+  final status = await Permission.camera.request();
+  if (!status.isGranted) {
+    throw const CameraDenied();
+  }
+}
+
+class CameraDenied implements Exception {
+  const CameraDenied();
+  @override
+  String toString() => 'Camera access is off. Allow it in Settings to take photos.';
+}
+
 Future<File?> takePhoto() async {
+  await _cameraAllowed();
   final x = await _imagePicker.pickImage(source: ImageSource.camera);
   return x == null ? null : File(x.path);
 }
 
 Future<File?> recordVideo() async {
+  await _cameraAllowed();
   final x = await _imagePicker.pickVideo(source: ImageSource.camera);
   return x == null ? null : File(x.path);
 }

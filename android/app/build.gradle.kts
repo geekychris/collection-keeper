@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.geekychris.collection_keeper"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler needs API 37 to compile against (the app still targets flutter.targetSdkVersion).
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

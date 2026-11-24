@@ -1706,6 +1706,17 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastSeenAt = GeneratedColumn<int>(
+    'last_seen_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1718,6 +1729,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     fieldValues,
     notes,
     coverMediaId,
+    lastSeenAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1807,6 +1819,15 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         ),
       );
     }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1856,6 +1877,10 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.string,
         data['${effectivePrefix}cover_media_id'],
       ),
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_seen_at'],
+      ),
     );
   }
 
@@ -1880,6 +1905,9 @@ class Item extends DataClass implements Insertable<Item> {
   final String fieldValues;
   final String notes;
   final String? coverMediaId;
+
+  /// When a stocktake last found the item where it should be (ms, UTC).
+  final int? lastSeenAt;
   const Item({
     required this.id,
     required this.createdAt,
@@ -1891,6 +1919,7 @@ class Item extends DataClass implements Insertable<Item> {
     required this.fieldValues,
     required this.notes,
     this.coverMediaId,
+    this.lastSeenAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1908,6 +1937,9 @@ class Item extends DataClass implements Insertable<Item> {
     map['notes'] = Variable<String>(notes);
     if (!nullToAbsent || coverMediaId != null) {
       map['cover_media_id'] = Variable<String>(coverMediaId);
+    }
+    if (!nullToAbsent || lastSeenAt != null) {
+      map['last_seen_at'] = Variable<int>(lastSeenAt);
     }
     return map;
   }
@@ -1928,6 +1960,9 @@ class Item extends DataClass implements Insertable<Item> {
       coverMediaId: coverMediaId == null && nullToAbsent
           ? const Value.absent()
           : Value(coverMediaId),
+      lastSeenAt: lastSeenAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSeenAt),
     );
   }
 
@@ -1947,6 +1982,7 @@ class Item extends DataClass implements Insertable<Item> {
       fieldValues: serializer.fromJson<String>(json['fieldValues']),
       notes: serializer.fromJson<String>(json['notes']),
       coverMediaId: serializer.fromJson<String?>(json['coverMediaId']),
+      lastSeenAt: serializer.fromJson<int?>(json['lastSeenAt']),
     );
   }
   @override
@@ -1963,6 +1999,7 @@ class Item extends DataClass implements Insertable<Item> {
       'fieldValues': serializer.toJson<String>(fieldValues),
       'notes': serializer.toJson<String>(notes),
       'coverMediaId': serializer.toJson<String?>(coverMediaId),
+      'lastSeenAt': serializer.toJson<int?>(lastSeenAt),
     };
   }
 
@@ -1977,6 +2014,7 @@ class Item extends DataClass implements Insertable<Item> {
     String? fieldValues,
     String? notes,
     Value<String?> coverMediaId = const Value.absent(),
+    Value<int?> lastSeenAt = const Value.absent(),
   }) => Item(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -1988,6 +2026,7 @@ class Item extends DataClass implements Insertable<Item> {
     fieldValues: fieldValues ?? this.fieldValues,
     notes: notes ?? this.notes,
     coverMediaId: coverMediaId.present ? coverMediaId.value : this.coverMediaId,
+    lastSeenAt: lastSeenAt.present ? lastSeenAt.value : this.lastSeenAt,
   );
   Item copyWithCompanion(ItemsCompanion data) {
     return Item(
@@ -2009,6 +2048,9 @@ class Item extends DataClass implements Insertable<Item> {
       coverMediaId: data.coverMediaId.present
           ? data.coverMediaId.value
           : this.coverMediaId,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
     );
   }
 
@@ -2024,7 +2066,8 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('locationId: $locationId, ')
           ..write('fieldValues: $fieldValues, ')
           ..write('notes: $notes, ')
-          ..write('coverMediaId: $coverMediaId')
+          ..write('coverMediaId: $coverMediaId, ')
+          ..write('lastSeenAt: $lastSeenAt')
           ..write(')'))
         .toString();
   }
@@ -2041,6 +2084,7 @@ class Item extends DataClass implements Insertable<Item> {
     fieldValues,
     notes,
     coverMediaId,
+    lastSeenAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -2055,7 +2099,8 @@ class Item extends DataClass implements Insertable<Item> {
           other.locationId == this.locationId &&
           other.fieldValues == this.fieldValues &&
           other.notes == this.notes &&
-          other.coverMediaId == this.coverMediaId);
+          other.coverMediaId == this.coverMediaId &&
+          other.lastSeenAt == this.lastSeenAt);
 }
 
 class ItemsCompanion extends UpdateCompanion<Item> {
@@ -2069,6 +2114,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<String> fieldValues;
   final Value<String> notes;
   final Value<String?> coverMediaId;
+  final Value<int?> lastSeenAt;
   final Value<int> rowid;
   const ItemsCompanion({
     this.id = const Value.absent(),
@@ -2081,6 +2127,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.fieldValues = const Value.absent(),
     this.notes = const Value.absent(),
     this.coverMediaId = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ItemsCompanion.insert({
@@ -2094,6 +2141,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.fieldValues = const Value.absent(),
     this.notes = const Value.absent(),
     this.coverMediaId = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -2111,6 +2159,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<String>? fieldValues,
     Expression<String>? notes,
     Expression<String>? coverMediaId,
+    Expression<int>? lastSeenAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2124,6 +2173,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (fieldValues != null) 'field_values': fieldValues,
       if (notes != null) 'notes': notes,
       if (coverMediaId != null) 'cover_media_id': coverMediaId,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2139,6 +2189,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Value<String>? fieldValues,
     Value<String>? notes,
     Value<String?>? coverMediaId,
+    Value<int?>? lastSeenAt,
     Value<int>? rowid,
   }) {
     return ItemsCompanion(
@@ -2152,6 +2203,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       fieldValues: fieldValues ?? this.fieldValues,
       notes: notes ?? this.notes,
       coverMediaId: coverMediaId ?? this.coverMediaId,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2189,6 +2241,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (coverMediaId.present) {
       map['cover_media_id'] = Variable<String>(coverMediaId.value);
     }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<int>(lastSeenAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2208,6 +2263,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('fieldValues: $fieldValues, ')
           ..write('notes: $notes, ')
           ..write('coverMediaId: $coverMediaId, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4035,6 +4091,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<String> fieldValues,
   Value<String> notes,
   Value<String?> coverMediaId,
+  Value<int?> lastSeenAt,
   Value<int> rowid,
 });
 typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
@@ -4048,6 +4105,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String> fieldValues,
   Value<String> notes,
   Value<String?> coverMediaId,
+  Value<int?> lastSeenAt,
   Value<int> rowid,
 });
 
@@ -4142,6 +4200,11 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<String> get coverMediaId => $composableBuilder(
     column: $table.coverMediaId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4248,6 +4311,11 @@ class $$ItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CollectionsTableOrderingComposer get collectionId {
     final $$CollectionsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4311,6 +4379,11 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<String> get coverMediaId => $composableBuilder(
     column: $table.coverMediaId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
     builder: (column) => column,
   );
 
@@ -4401,6 +4474,7 @@ class $$ItemsTableTableManager
                 Value<String> fieldValues = const Value.absent(),
                 Value<String> notes = const Value.absent(),
                 Value<String?> coverMediaId = const Value.absent(),
+                Value<int?> lastSeenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ItemsCompanion(
                 id: id,
@@ -4413,6 +4487,7 @@ class $$ItemsTableTableManager
                 fieldValues: fieldValues,
                 notes: notes,
                 coverMediaId: coverMediaId,
+                lastSeenAt: lastSeenAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4427,6 +4502,7 @@ class $$ItemsTableTableManager
                 Value<String> fieldValues = const Value.absent(),
                 Value<String> notes = const Value.absent(),
                 Value<String?> coverMediaId = const Value.absent(),
+                Value<int?> lastSeenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ItemsCompanion.insert(
                 id: id,
@@ -4439,6 +4515,7 @@ class $$ItemsTableTableManager
                 fieldValues: fieldValues,
                 notes: notes,
                 coverMediaId: coverMediaId,
+                lastSeenAt: lastSeenAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

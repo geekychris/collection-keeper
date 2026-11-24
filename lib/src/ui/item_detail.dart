@@ -9,7 +9,11 @@ import '../data/database.dart';
 import '../data/model.dart';
 import '../data/repository.dart';
 import 'common.dart';
+import '../labels/label_content.dart';
 import 'item_edit_screen.dart';
+import 'location_detail_screen.dart';
+import 'location_picker.dart';
+import 'print_labels_screen.dart';
 import 'media_viewer.dart';
 
 /// An item's photos, fields and notes. Shown as a page on phones and as the
@@ -41,10 +45,31 @@ class ItemDetail extends ConsumerWidget {
               ),
             ),
           ),
-          IconButton(
-            tooltip: 'Delete',
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context, ref, item),
+          PopupMenuButton<String>(
+            onSelected: (v) async {
+              if (v == 'label') {
+                final locations = ref.read(locationsProvider).value ?? const <Location>[];
+                final collection = ref.read(collectionProvider(item.collectionId)).value;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => PrintLabelsScreen(
+                      labels: [itemLabel(item, collection: collection, locations: locations)],
+                    ),
+                  ),
+                );
+              }
+              if (v == 'move') {
+                final picked = await chooseLocation(context, title: 'Move ${item.name} to…', allowNone: true);
+                if (picked != null) await ref.read(repositoryProvider).moveItem(item.id, picked.location?.id);
+              }
+              if (v == 'delete' && context.mounted) _delete(context, ref, item);
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'label', child: Text('Print label')),
+              PopupMenuItem(value: 'move', child: Text('Move to…')),
+              PopupMenuItem(value: 'delete', child: Text('Delete')),
+            ],
           ),
         ];
         final body = _ItemBody(item: item);
@@ -109,7 +134,14 @@ class _ItemBody extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.place_outlined),
             title: Text(locationPath(location, locations)),
-            subtitle: location.code.isEmpty ? null : Text(location.code),
+            subtitle: Text([
+              if (location.code.isNotEmpty) location.code,
+              item.lastSeenAt == null ? 'not checked in a stocktake yet' : 'checked ${lastSeenText(item.lastSeenAt!)}',
+            ].join(' · ')),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => LocationDetailScreen(locationId: location.id)),
+            ),
           ),
         if (shown.isNotEmpty)
           Padding(
@@ -262,7 +294,13 @@ Future<void> addMediaTo(BuildContext context, WidgetRef ref, String itemId) asyn
     ),
   );
   if (source == null) return;
-  final files = await source();
+  final List<File> files;
+  try {
+    files = await source();
+  } catch (e) {
+    if (context.mounted) showMessage(context, '$e');
+    return;
+  }
   if (files.isEmpty || !context.mounted) return;
   await withProgress(
     context,

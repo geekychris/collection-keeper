@@ -3,7 +3,11 @@ import 'package:material_ui/material_ui.dart';
 
 import '../app/providers.dart';
 import '../data/database.dart';
+import '../labels/label_content.dart';
 import 'common.dart';
+import 'location_detail_screen.dart';
+import 'location_picker.dart';
+import 'print_labels_screen.dart';
 
 /// The tree of places things are kept, shared by every collection.
 class LocationsScreen extends ConsumerWidget {
@@ -13,7 +17,27 @@ class LocationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locations = ref.watch(locationsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Locations')),
+      appBar: AppBar(
+        title: const Text('Locations'),
+        actions: [
+          IconButton(
+            tooltip: 'Print labels for all locations',
+            icon: const Icon(Icons.qr_code_2),
+            onPressed: () {
+              final all = ref.read(locationsProvider).value ?? const <Location>[];
+              if (all.isEmpty) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => PrintLabelsScreen(
+                    labels: [for (final (l, _) in flattenLocations(all)) locationLabel(l, all)],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(context, ref, parentId: null),
         icon: const Icon(Icons.add),
@@ -26,11 +50,12 @@ class LocationsScreen extends ConsumerWidget {
             return const EmptyState(
               icon: Icons.warehouse_outlined,
               title: 'No locations yet',
-              message: 'Add the places you keep things, from the building down to the box: '
+              message:
+                  'Add the places you keep things, from the building down to the box: '
                   'Warehouse › Aisle 3 › Shelf 2.',
             );
           }
-          final rows = _flatten(all);
+          final rows = flattenLocations(all);
           return ListView.builder(
             padding: const EdgeInsets.only(bottom: 96),
             itemCount: rows.length,
@@ -42,23 +67,40 @@ class LocationsScreen extends ConsumerWidget {
                 title: Text(location.name),
                 subtitle: location.code.isEmpty && location.notes.isEmpty
                     ? null
-                    : Text([location.code, location.notes].where((s) => s.isNotEmpty).join(' · '),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                onTap: () => _edit(context, ref, location: location),
+                    : Text(
+                        [location.code, location.notes].where((s) => s.isNotEmpty).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => LocationDetailScreen(locationId: location.id)),
+                ),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) async {
                     if (v == 'add') _edit(context, ref, parentId: location.id);
                     if (v == 'edit') _edit(context, ref, location: location);
+                    if (v == 'label') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => PrintLabelsScreen(labels: [locationLabel(location, all)]),
+                        ),
+                      );
+                    }
                     if (v == 'delete') {
-                      final ok = await confirm(context,
-                          title: 'Delete ${location.name}?',
-                          message: 'Places inside it, and items kept there, move up one level.');
+                      final ok = await confirm(
+                        context,
+                        title: 'Delete ${location.name}?',
+                        message: 'Places inside it, and items kept there, move up one level.',
+                      );
                       if (ok) await ref.read(repositoryProvider).deleteLocation(location.id);
                     }
                   },
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'add', child: Text('Add a place inside')),
                     PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(value: 'label', child: Text('Print label')),
                     PopupMenuItem(value: 'delete', child: Text('Delete')),
                   ],
                 ),
@@ -70,43 +112,22 @@ class LocationsScreen extends ConsumerWidget {
     );
   }
 
-  /// Depth-first order, children sorted by name, each with its depth.
-  List<(Location, int)> _flatten(List<Location> all) {
-    final ids = {for (final l in all) l.id};
-    final children = <String?, List<Location>>{};
-    for (final l in all) {
-      // A parent that no longer exists makes the location a root.
-      final parent = ids.contains(l.parentId) ? l.parentId : null;
-      children.putIfAbsent(parent, () => []).add(l);
-    }
-    final out = <(Location, int)>[];
-    final seen = <String>{};
-    void walk(String? parent, int depth) {
-      final kids = [...?children[parent]]
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      for (final k in kids) {
-        if (!seen.add(k.id)) continue;
-        out.add((k, depth));
-        walk(k.id, depth + 1);
-      }
-    }
+  Future<void> _edit(BuildContext context, WidgetRef ref, {Location? location, String? parentId}) =>
+      editLocation(context, ref, location: location, parentId: parentId);
+}
 
-    walk(null, 0);
-    return out;
-  }
-
-  Future<void> _edit(BuildContext context, WidgetRef ref, {Location? location, String? parentId}) async {
-    final result = await showDialog<({String name, String code, String notes})>(
-      context: context,
-      builder: (_) => _LocationDialog(location: location),
-    );
-    if (result == null) return;
-    final repo = ref.read(repositoryProvider);
-    if (location == null) {
-      await repo.addLocation(name: result.name, code: result.code, notes: result.notes, parentId: parentId);
-    } else {
-      await repo.updateLocation(location.id, name: result.name, code: result.code, notes: result.notes);
-    }
+/// Adds a location (inside [parentId]) or edits [location].
+Future<void> editLocation(BuildContext context, WidgetRef ref, {Location? location, String? parentId}) async {
+  final result = await showDialog<({String name, String code, String notes})>(
+    context: context,
+    builder: (_) => _LocationDialog(location: location),
+  );
+  if (result == null) return;
+  final repo = ref.read(repositoryProvider);
+  if (location == null) {
+    await repo.addLocation(name: result.name, code: result.code, notes: result.notes, parentId: parentId);
+  } else {
+    await repo.updateLocation(location.id, name: result.name, code: result.code, notes: result.notes);
   }
 }
 
@@ -142,25 +163,28 @@ class _LocationDialogState extends State<_LocationDialog> {
       title: Text(widget.location == null ? 'New location' : 'Edit location'),
       content: SizedBox(
         width: 400,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
-            controller: _name,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Shelf 2'),
-            textCapitalization: TextCapitalization.sentences,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _code,
-            decoration: const InputDecoration(labelText: 'Label code (optional)', hintText: 'e.g. A3-S2'),
-            textCapitalization: TextCapitalization.characters,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _notes,
-            decoration: const InputDecoration(labelText: 'Notes (optional)'),
-          ),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _name,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Shelf 2'),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _code,
+              decoration: const InputDecoration(labelText: 'Label code (optional)', hintText: 'e.g. A3-S2'),
+              textCapitalization: TextCapitalization.characters,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notes,
+              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),

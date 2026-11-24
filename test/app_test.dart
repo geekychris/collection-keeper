@@ -3,15 +3,21 @@ import 'dart:typed_data';
 
 import 'package:collection_keeper/main.dart';
 import 'package:collection_keeper/src/app/providers.dart';
+import 'package:collection_keeper/src/app/settings.dart';
+import 'package:collection_keeper/src/data/codes.dart';
 import 'package:collection_keeper/src/data/database.dart';
 import 'package:collection_keeper/src/data/media_store.dart';
 import 'package:collection_keeper/src/data/model.dart';
 import 'package:collection_keeper/src/data/repository.dart';
+import 'package:collection_keeper/src/labels/label_content.dart';
+import 'package:collection_keeper/src/ui/print_labels_screen.dart';
+import 'package:collection_keeper/src/ui/walk_round.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   // Each test opens a fresh in-memory database.
@@ -19,8 +25,11 @@ void main() {
   late Directory tmp;
   late AppDatabase db;
   late Repository repo;
+  late Settings settings;
 
   setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    settings = await Settings.load();
     tmp = await Directory.systemTemp.createTemp('ck-widget-');
     db = AppDatabase(NativeDatabase.memory());
     repo = Repository(
@@ -50,14 +59,24 @@ void main() {
     }
   }
 
-  Future<void> pumpApp(WidgetTester tester, {Size size = const Size(420, 900)}) async {
+  Future<void> pumpApp(WidgetTester tester, {Size size = const Size(420, 900), Widget? home}) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
-      overrides: [repositoryProvider.overrideWithValue(repo)],
-      child: const CollectionKeeperApp(),
+      overrides: [
+        repositoryProvider.overrideWithValue(repo),
+        settingsProvider.overrideWithValue(settings),
+      ],
+      child: home == null ? const CollectionKeeperApp() : MaterialApp(home: home),
     ));
+    await settle(tester);
+  }
+
+  /// Types a code into the scanner's field, as a keyboard-wedge scanner does.
+  Future<void> typeCode(WidgetTester tester, String code) async {
+    await tester.enterText(find.byType(TextField).last, code);
+    await tester.testTextInput.receiveAction(TextInputAction.go);
     await settle(tester);
   }
 
@@ -112,6 +131,79 @@ void main() {
     await settle(tester);
     expect(find.text('Boxed, with manual'), findsOneWidget);
     expect(find.text('Select an item'), findsNothing);
+    await finish(tester);
+  });
+
+  testWidgets('put away: scan a shelf, then things to put on it, with undo', (tester) async {
+    late Item amiga;
+    late Location shelf;
+    await tester.runAsync(() async {
+      final c = await repo.createCollection(name: 'Computers');
+      shelf = await repo.addLocation(name: 'Shelf 2', code: 'A3-S2');
+      amiga = await repo.createItem(c.id, name: 'Amiga 1200');
+    });
+    await pumpApp(tester, home: const PutAwayScreen(camera: false));
+    expect(find.text('Scan a shelf or box first'), findsOneWidget);
+
+    await typeCode(tester, labelCode(CodeKind.item, amiga.id));
+    expect(find.text('Scan the shelf or box first'), findsOneWidget, reason: 'no target yet');
+
+    await typeCode(tester, 'a3-s2');
+    expect(find.text('Putting things in Shelf 2'), findsWidgets);
+    await typeCode(tester, labelCode(CodeKind.item, amiga.id));
+    expect(find.text('Moved (1)'), findsOneWidget);
+    expect((await tester.runAsync(() => repo.itemById(amiga.id)))!.locationId, shelf.id);
+
+    await tester.tap(find.text('Undo'));
+    await settle(tester);
+    expect((await tester.runAsync(() => repo.itemById(amiga.id)))!.locationId, isNull);
+    await finish(tester);
+  });
+
+  testWidgets('stocktake: found, missing, and a stray moved here', (tester) async {
+    late Item a, b, stray;
+    late Location shelf;
+    await tester.runAsync(() async {
+      final c = await repo.createCollection(name: 'Computers');
+      shelf = await repo.addLocation(name: 'Shelf 2');
+      final other = await repo.addLocation(name: 'Garage');
+      a = await repo.createItem(c.id, name: 'Amiga 1200', locationId: shelf.id);
+      b = await repo.createItem(c.id, name: 'Atari 800XL', locationId: shelf.id);
+      stray = await repo.createItem(c.id, name: 'BBC Micro', locationId: other.id);
+    });
+    await pumpApp(tester, home: StocktakeScreen(locationId: shelf.id, camera: false));
+    expect(find.text('0 of 2 found'), findsOneWidget);
+
+    await typeCode(tester, labelCode(CodeKind.item, a.id));
+    expect(find.text('1 of 2 found'), findsOneWidget);
+    expect(find.text('Not found yet (1)'), findsOneWidget);
+    expect((await tester.runAsync(() => repo.itemById(a.id)))!.lastSeenAt, isNotNull);
+    expect((await tester.runAsync(() => repo.itemById(b.id)))!.lastSeenAt, isNull);
+
+    await typeCode(tester, labelCode(CodeKind.item, stray.id));
+    expect(find.text('Not recorded here'), findsOneWidget);
+    await tester.tap(find.text('Move here'));
+    await settle(tester);
+    expect(find.text('2 of 3 found'), findsOneWidget);
+    expect((await tester.runAsync(() => repo.itemById(stray.id)))!.locationId, shelf.id);
+    await finish(tester);
+  });
+
+  testWidgets('print labels shows a preview and offers the other-printer route', (tester) async {
+    late Item item;
+    late Collection c;
+    await tester.runAsync(() async {
+      c = await repo.createCollection(name: 'Computers');
+      item = await repo.createItem(c.id, name: 'Amiga 1200');
+    });
+    await pumpApp(tester, home: PrintLabelsScreen(labels: [itemLabel(item, collection: c)]));
+    expect(find.text('Print label'), findsOneWidget);
+    expect(find.text('Print…'), findsOneWidget, reason: 'no printer used before: PDF first');
+    expect(find.byType(RawImage), findsOneWidget, reason: 'the 1-bit preview rendered');
+
+    await tester.tap(find.text('NIIMBOT'));
+    await settle(tester);
+    expect(find.text('Find a printer nearby'), findsOneWidget);
     await finish(tester);
   });
 }

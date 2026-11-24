@@ -43,7 +43,7 @@ ancestors, so the path (Warehouse › Aisle 3 › Shelf 2) survives.
 {
   "id": "…", "collectionId": "…", "name": "Amiga 1200", "locationId": "…",
   "fieldValues": { "<field id>": "MC68EC020", "<field id>": 1992, "<field id>": true },
-  "notes": "", "coverMediaId": "…",
+  "notes": "", "coverMediaId": "…", "lastSeenAt": null,
   "createdAt": …, "updatedAt": …, "deleted": false,
   "media": [
     { "id": "…", "itemId": "…", "kind": "photo", "fileName": "<media id>.jpg",
@@ -56,6 +56,10 @@ ancestors, so the path (Warehouse › Aisle 3 › Shelf 2) survives.
 `fieldValues` maps a field id to its value: a string for text, long text,
 link and choice fields; a number for number and money fields; `yyyy-MM-dd`
 for dates; `true`/`false` for yes/no fields. A field with no value is absent.
+
+`lastSeenAt` is when a stocktake last found the item where it should be
+(milliseconds, UTC), or null. It was added after the first release; readers
+treat a missing `lastSeenAt` as null, so the format version stays 1.
 
 Media `kind` is `photo`, `video` or `document`. `sha256` is the hash of the
 file in `media/`.
@@ -71,3 +75,11 @@ file in `media/`.
 - Deletions are records with `"deleted": true` (tombstones), so they can
   travel like any other change. Exports currently leave deleted records out.
 - A reader must refuse a `version` higher than it understands.
+
+## Label codes
+
+Labels printed by the app carry a QR code holding `ck:i:<id>` for an item or
+`ck:l:<id>` for a location, where `<id>` is the record's UUID as 16 bytes in
+URL-safe base64 without padding (22 characters), to keep the code small
+enough for 12 mm labels. Readers also accept `…/i/<id>` and `…/l/<id>` at the
+end of an http(s) link, a bare UUID, and a location's own `code`.

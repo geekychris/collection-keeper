@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import 'codes.dart';
 import 'database.dart';
 import 'media_store.dart';
 import 'model.dart';
@@ -293,6 +294,62 @@ class Repository {
     }
   }
 
+  Future<Item?> itemById(String id) => watchItem(id).first;
+
+  /// Moves an item to [locationId] (null: nowhere in particular).
+  Future<void> moveItem(String itemId, String? locationId) =>
+      updateItem(itemId, locationId: Value(locationId));
+
+  /// Records that a stocktake found these items.
+  Future<void> markSeen(Iterable<String> itemIds, {int? at}) async {
+    final ids = itemIds.toList();
+    if (ids.isEmpty) return;
+    final now = at ?? nowMs();
+    await (db.update(db.items)..where((i) => i.id.isIn(ids))).write(
+      ItemsCompanion(lastSeenAt: Value(now), updatedAt: Value(now)),
+    );
+  }
+
+  Future<void> setLastSeen(String itemId, int? at) =>
+      (db.update(db.items)..where((i) => i.id.equals(itemId))).write(
+        ItemsCompanion(lastSeenAt: Value(at), updatedAt: Value(nowMs())),
+      );
+
+  /// Items kept at any of [locationIds], from every collection, by name.
+  Stream<List<Item>> watchItemsAt(Set<String> locationIds) {
+    if (locationIds.isEmpty) return Stream.value(const []);
+    return (db.select(db.items)
+          ..where((i) => i.locationId.isIn(locationIds) & i.deleted.equals(false))
+          ..orderBy([(i) => OrderingTerm(expression: i.name.collate(Collate.noCase))]))
+        .watch();
+  }
+
+  /// Works out what a scanned or typed code refers to: a label's `ck:` code,
+  /// a bare item or location id, or a location's own label code (ignoring
+  /// case). Returns null when nothing live matches.
+  Future<ScanTarget?> resolveCode(String raw) async {
+    final text = raw.trim();
+    if (text.isEmpty) return null;
+    final parsed = parseLabelCode(text);
+    if (parsed != null) {
+      final exists = parsed.kind == CodeKind.item
+          ? await itemById(parsed.id) != null
+          : await locationById(parsed.id) != null;
+      return exists ? parsed : null;
+    }
+    if (isUuid(text)) {
+      final id = text.toLowerCase();
+      if (await itemById(id) != null) return (kind: CodeKind.item, id: id);
+      if (await locationById(id) != null) return (kind: CodeKind.location, id: id);
+      return null;
+    }
+    final byCode = await (db.select(db.locations)
+          ..where((l) => l.code.lower().equals(text.toLowerCase()) & l.deleted.equals(false))
+          ..limit(1))
+        .getSingleOrNull();
+    return byCode == null ? null : (kind: CodeKind.location, id: byCode.id);
+  }
+
   String _encodeValues(Map<String, Object?> values) =>
       jsonEncode({for (final e in values.entries) if (e.value != null) e.key: e.value});
 
@@ -383,6 +440,10 @@ class Repository {
         ..orderBy([(l) => OrderingTerm(expression: l.name, mode: OrderingMode.asc)]))
       .watch();
 
+  Future<Location?> locationById(String id) => (db.select(db.locations)
+        ..where((l) => l.id.equals(id) & l.deleted.equals(false)))
+      .getSingleOrNull();
+
   Future<Location> addLocation({
     required String name,
     String? parentId,
@@ -471,4 +532,19 @@ String locationPath(Location location, List<Location> all) {
     parent = parent.parentId == null ? null : byId[parent.parentId];
   }
   return parts.join(' › ');
+}
+
+/// [rootId] and every location inside it, at any depth.
+Set<String> locationAndDescendants(String rootId, List<Location> all) {
+  final children = <String, List<String>>{};
+  for (final l in all) {
+    if (l.parentId != null) children.putIfAbsent(l.parentId!, () => []).add(l.id);
+  }
+  final out = <String>{};
+  final stack = [rootId];
+  while (stack.isNotEmpty) {
+    final id = stack.removeLast();
+    if (out.add(id)) stack.addAll(children[id] ?? const []);
+  }
+  return out;
 }
