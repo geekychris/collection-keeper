@@ -6,9 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -120,7 +122,15 @@ func TestOIDCSignIn(t *testing.T) {
 	// proxy forwards it (the LAN name on :8443).
 	signIn := func() (*browser, int, string) {
 		b := h.browser()
-		req, _ := http.NewRequest("GET", h.srv.URL+"/login/oidc?next=%2Fdevices", nil)
+		// As a real browser does: a signed-in page (here the app's pairing
+		// link) sends us to /login, whose button starts the sign-in.
+		_, _, hdr := b.get("/pair?code=ABCD-EFGH")
+		_, page, _ := b.get(hdr.Get("Location"))
+		m := regexp.MustCompile(`href="(/login/oidc[^"]*)"`).FindStringSubmatch(page)
+		if m == nil {
+			t.Fatalf("no sign-in button on the login page: %.400s", page)
+		}
+		req, _ := http.NewRequest("GET", h.srv.URL+html.UnescapeString(m[1]), nil)
 		req.Header.Set("X-Forwarded-Host", "collections.example.test:8443")
 		req.Header.Set("X-Forwarded-Proto", "https")
 		res, err := b.c.Do(req)
@@ -165,7 +175,7 @@ func TestOIDCSignIn(t *testing.T) {
 	}
 
 	b, code, where := signIn()
-	if code != http.StatusSeeOther || !strings.HasPrefix(where, "/devices<") {
+	if code != http.StatusSeeOther || !strings.HasPrefix(where, "/pair?code=ABCD-EFGH<") {
 		t.Fatalf("callback: %d %s", code, where)
 	}
 	if c, body, _ := b.get("/admin"); c != 200 || !strings.Contains(body, "reachable") || !strings.Contains(body, "Chris Collins") {

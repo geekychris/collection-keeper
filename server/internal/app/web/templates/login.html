@@ -3,7 +3,7 @@
   <h1>Sign in</h1>
   {{if .Data.Failed}}<p class="flash bad">That username and password don't match an account here.</p>{{end}}
   {{if .Data.OIDC}}
-  <p><a class="button primary wide" href="/login/oidc?next={{query .Data.Next}}">Sign in with the site's login</a></p>
+  <p><a class="button primary wide" href="/login/oidc?next={{.Data.Next}}">Sign in with the site's login</a></p>
   <details>
     <summary>Sign in with a password instead</summary>
   {{end}}
