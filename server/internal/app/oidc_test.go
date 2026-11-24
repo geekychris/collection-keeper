@@ -212,3 +212,57 @@ func TestOIDCSignIn(t *testing.T) {
 		t.Fatalf("unknown state: %d", c)
 	}
 }
+
+// On the https names a signed-out page goes straight to the site's login,
+// comes back to the page, and doesn't loop when the browser keeps no cookie.
+func TestOIDCAutoSignIn(t *testing.T) {
+	p := newFakeProvider(t)
+	h := newHarness(t, func(c *Config) {
+		c.OIDCIssuer = p.issuer
+		c.OIDCBackchannel = p.srv.URL
+		c.OIDCClientID = "collection-keeper"
+		c.OIDCClientSecret = p.secret
+	})
+	fwd := func(b *browser, path string) (int, string, *http.Response) {
+		t.Helper()
+		req, _ := http.NewRequest("GET", h.srv.URL+path, nil)
+		req.Header.Set("X-Forwarded-Host", "collections.example.test")
+		req.Header.Set("X-Forwarded-Proto", "https")
+		res, err := b.c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode, res.Header.Get("Location"), res
+	}
+
+	b := h.browser()
+	code, loc, _ := fwd(b, "/pair?code=ABCD-EFGH")
+	if code != http.StatusFound || loc != "/login/oidc?auto=1&next="+url.QueryEscape("/pair?code=ABCD-EFGH") {
+		t.Fatalf("signed-out /pair on https: %d %s", code, loc)
+	}
+	_, authorize, _ := fwd(b, loc)
+	back, _ := url.Parse(p.authorize(authorize))
+	code, loc, res := fwd(b, back.Path+"?"+back.RawQuery)
+	if code != http.StatusSeeOther || loc != "/pair?code=ABCD-EFGH&signedin=1" {
+		t.Fatalf("callback: %d %s", code, loc)
+	}
+	for _, c := range res.Cookies() {
+		c.Secure = false
+		u, _ := url.Parse(h.srv.URL)
+		b.c.Jar.SetCookies(u, []*http.Cookie{c})
+	}
+	if code, loc, _ := fwd(b, loc); code == http.StatusFound {
+		t.Fatalf("signed in, /pair still redirects: %s", loc)
+	}
+
+	// A browser that dropped the cookie gets the login page, not a loop.
+	if code, loc, _ := fwd(h.browser(), "/pair?code=ABCD-EFGH&signedin=1"); code != http.StatusFound || !strings.HasPrefix(loc, "/login?next=") {
+		t.Fatalf("no cookie after an automatic sign-in: %d %s", code, loc)
+	}
+	// Plain http (the NodePort) keeps the login page: the site's login
+	// can't send anyone back there.
+	if code, _, hdr := h.browser().get("/pair?code=ABCD-EFGH"); code != http.StatusFound || !strings.HasPrefix(hdr.Get("Location"), "/login?next=") {
+		t.Fatalf("signed-out /pair on http: %d %s", code, hdr.Get("Location"))
+	}
+}

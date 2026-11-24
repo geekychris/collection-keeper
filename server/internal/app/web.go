@@ -166,7 +166,20 @@ func (a *App) web(h pageFunc) http.HandlerFunc {
 				http.Error(w, "signed out", http.StatusUnauthorized)
 				return
 			}
-			http.Redirect(w, r, "/login?next="+url.QueryEscape(r.URL.RequestURI()), http.StatusFound)
+			// Whether the browser sent a session cookie at all (never its
+			// value) tells a dropped cookie from an expired session.
+			_, cerr := r.Cookie(sessionCookie)
+			a.log.Info("not signed in", "path", r.URL.Path, "session_cookie", cerr == nil)
+			next := url.QueryEscape(r.URL.RequestURI())
+			// On the https names, go straight to the site's login: it
+			// remembers the person's passkey, so this costs no tap. The
+			// marker it comes back with stops a loop when a browser keeps
+			// no cookie; then the login page is shown instead.
+			if a.oidc != nil && requestScheme(r) == "https" && !r.URL.Query().Has(signedInParam) {
+				http.Redirect(w, r, "/login/oidc?auto=1&next="+next, http.StatusFound)
+				return
+			}
+			http.Redirect(w, r, "/login?next="+next, http.StatusFound)
 			return
 		}
 		if r.Method == http.MethodPost && !checkCSRF(r, s) {
@@ -188,11 +201,20 @@ func (a *App) admin(h pageFunc) http.HandlerFunc {
 }
 
 func redirectFlash(w http.ResponseWriter, r *http.Request, to, flash string) {
+	http.Redirect(w, r, withParam(to, "flash", flash), http.StatusSeeOther)
+}
+
+// signedInParam marks a page reached by an automatic sign-in, so a browser
+// that comes back without the session cookie isn't sent round again.
+const signedInParam = "signedin"
+
+// withParam adds name=value to a path's query.
+func withParam(path, name, value string) string {
 	sep := "?"
-	if strings.Contains(to, "?") {
+	if strings.Contains(path, "?") {
 		sep = "&"
 	}
-	http.Redirect(w, r, to+sep+"flash="+url.QueryEscape(flash), http.StatusSeeOther)
+	return path + sep + url.QueryEscape(name) + "=" + url.QueryEscape(value)
 }
 
 // safeNext keeps a post-login redirect on this site.
@@ -242,7 +264,11 @@ func (a *App) loginOIDC(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
-	if err := a.oidc.start(w, r, safeNext(r.URL.Query().Get("next"))); err != nil {
+	next := safeNext(r.URL.Query().Get("next"))
+	if r.URL.Query().Get("auto") == "1" {
+		next = withParam(next, signedInParam, "1")
+	}
+	if err := a.oidc.start(w, r, next); err != nil {
 		a.log.Error("starting an OIDC sign-in", "err", err)
 		a.errorPage(w, r, nil, http.StatusBadGateway, "The login service isn't reachable right now ("+err.Error()+"). An administrator can still sign in with a password.")
 	}
