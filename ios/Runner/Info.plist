@@ -6,6 +6,12 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos and videos of the things in your collection.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Record sound with videos of your collection.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Add photos and videos of your collection from your library.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Collection Keeper</string>
 	<key>CFBundleExecutable</key>
