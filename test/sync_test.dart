@@ -15,6 +15,7 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A server that follows docs/sync-protocol.md, in memory: last writer wins,
@@ -298,8 +299,26 @@ void main() {
     expect((await b.repo.watchCollection(c.id).first)!.name, 'Before sync');
   });
 
+  test('the device token lives in secure storage; an old copy in the preferences moves there', () async {
+    SharedPreferences.setMockInitialValues({'syncToken': 'ckt_old', 'serverUrl': 'https://example.test'});
+    FlutterSecureStorage.setMockInitialValues({});
+    final settings = await Settings.load();
+    expect(settings.syncToken, 'ckt_old');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('syncToken'), isNull, reason: 'not left in the preferences');
+    expect(await const FlutterSecureStorage().read(key: 'syncToken'), 'ckt_old');
+
+    settings.syncToken = 'ckt_new';
+    await Future<void>.delayed(Duration.zero);
+    expect((await Settings.load()).syncToken, 'ckt_new');
+    settings.syncToken = null;
+    await Future<void>.delayed(Duration.zero);
+    expect((await Settings.load()).syncToken, isNull);
+  });
+
   test('a revoked token stops the controller and asks to connect again', () async {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
     final settings = await Settings.load();
     await a.repo.createCollection(name: 'Mine');
     final sync = SyncController(a.repo, settings, api: (_, _) => a.api);
